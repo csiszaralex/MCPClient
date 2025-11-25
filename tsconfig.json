@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    /* Alap beállítások */
+    "target": "ES2022" /* Modern JS funkciók támogatása */,
+    "module": "NodeNext" /* Helyes modulrendszer Node-hoz */,
+    "moduleResolution": "NodeNext" /* Hogyan találja meg az importokat */,
+    "outDir": "./dist" /* Ide kerülnek a lefordított .js fájlok */,
+    "rootDir": "./src" /* Itt vannak a forráskódok */,
+    "sourceMap": true /* Debuggoláshoz segít */,
+
+    /* Szigorúság (Strictness) */
+    "strict": true /* Minden szigorú ellenőrzés bekapcsolása */,
+    "noImplicitAny": true /* Nem engedi a 'típus nélküli' változókat */,
+    "strictNullChecks": true /* Null/Undefined kezelés kényszerítése */,
+
+    /* Interoperabilitás */
+    "esModuleInterop": true /* Segít régebbi csomagok importálásában */,
+    "skipLibCheck": true /* Gyorsítja a fordítást */,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
