@@ -14,14 +14,14 @@ export class LoggerService {
     this.logger = pino(
       {
         level: config.logLevel,
-        // transport: {
-        //   target: 'pino-pretty',
-        //   options: {
-        //     colorize: true,
-        //     translateTime: 'HH:MM:ss',
-        //     ignore: 'pid,hostname',
-        //   },
-        // },
+        transport: {
+          target: 'pino-pretty',
+          options: {
+            colorize: true,
+            translateTime: 'HH:MM:ss',
+            ignore: 'pid,hostname',
+          },
+        },
       },
       fileTransport
     );

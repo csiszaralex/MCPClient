@@ -1,2 +1,2 @@
-approvedBuiltDependencies:
+onlyBuiltDependencies:
   - esbuild
