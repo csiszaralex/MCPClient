@@ -14,7 +14,7 @@ export class ConfigService {
   constructor() {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
-      throw new Error("HIÁNYZÓ KONFIGURÁCIÓ: 'ANTHROPIC_API_KEY' nincs beállítva a .env fájlban.");
+      throw new Error("HIaNYZo KONFIGURaCIo: 'ANTHROPIC_API_KEY' nincs beallítva a .env fajlban.");
     }
     this._anthropicApiKey = apiKey;
 

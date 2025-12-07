@@ -1,5 +1,5 @@
 import pino from 'pino';
-import { ConfigService } from './configService.js';
+import { ConfigService } from './ConfigService.js';
 
 export class LoggerService {
   private logger: pino.Logger;
@@ -18,6 +18,7 @@ export class LoggerService {
           target: 'pino-pretty',
           options: {
             colorize: true,
+            
             translateTime: 'HH:MM:ss',
             ignore: 'pid,hostname',
           },
@@ -42,5 +43,16 @@ export class LoggerService {
 
   debug(msg: string, data?: object) {
     this.logger.debug(data, msg);
+  }
+
+  // Optional: create contextual child logger for components
+  withContext(context: object) {
+    const child = this.logger.child(context);
+    return {
+      info: (msg: string, data?: object) => child.info(data, msg),
+      error: (msg: string, error?: unknown) => child.error({ err: error }, msg),
+      warn: (msg: string, data?: object) => child.warn(data, msg),
+      debug: (msg: string, data?: object) => child.debug(data, msg),
+    };
   }
 }

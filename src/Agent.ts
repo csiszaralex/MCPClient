@@ -1,7 +1,7 @@
 import { IAgentUi } from './interfaces/IAgentUi.js';
 import { AiService } from './services/AiService.js';
+import { LoggerService } from './services/LoggerService.js';
 import { McpService } from './services/McpService.js';
-import { LoggerService } from './services/loggerService.js';
 
 export class Agent {
   private history: any[] = [];
@@ -14,51 +14,57 @@ export class Agent {
   ) {}
 
   async start() {
-    this.ui.logSystem("Chat elindítva. Kilépéshez írd be: 'exit'");
+    this.ui.logSystem("Chat elindítva. Kilepeshez írd be: 'exit'");
 
     while (true) {
-      // 1. Új user input bekérése
+      // 1. Új user input bekerese
       const userInput = await this.ui.ask('\n👤 Te: ');
 
-      // 2. Kilépés kezelése
+      // 2. Kilepes kezelese
       if (userInput.toLowerCase() === 'exit') {
-        this.ui.logSystem('Kliens leállítása... Viszlát!');
+        this.ui.logSystem('Kliens leallítasa... Viszlat!');
         break;
       }
 
-      // 3. User input hozzáadása a historyhoz
+      // 3. User input hozzaadasa a historyhoz
+      this.logger.info('Felhasznaloi bevitel', { textLength: userInput.length });
       this.history.push({ role: 'user', content: userInput });
 
-      // 4. A válaszgenerálás és tool használat (Belső Loop) elindítása
+      // 4. A valaszgeneralas es tool hasznalat (Belső Loop) elindítasa
       await this.processLoop();
     }
   }
 
-  // Ez a metódus kezeli az EGYETLEN válaszhoz tartozó tool hívásokat (recursively)
+  // Ez a metodus kezeli az EGYETLEN valaszhoz tartozo tool hívasokat (recursively)
   private async processLoop() {
     const toolsDef = await this.mcp.getAllToolsDefinition();
+    this.logger.debug('Tool definíciok betoltve', { toolCount: toolsDef.length });
 
-    // Belső ciklus: addig fut, amíg az AI toolokat akar használni
+    // Belső ciklus: addig fut, amíg az AI toolokat akar hasznalni
     while (true) {
       this.ui.logSystem('AI gondolkodik...');
+      this.logger.info('AI kor indul');
 
       try {
         const response = await this.ai.generateResponse(this.history, toolsDef);
 
-        // Fontos: Az AI válaszát elmentjük a közös historyba
+        // Fontos: Az AI valaszat elmentjük a kozos historyba
         this.history.push({ role: 'assistant', content: response.content });
+        const types = response.content?.map((b: any) => b.type) ?? [];
+        this.logger.info('AI tartalom', { contentTypes: types });
 
-        // Megnézzük, van-e tool_use
+        // Megnezzük, van-e tool_use
         const toolBlocks = response.content.filter((b) => b.type === 'tool_use');
 
-        // HA NINCS TOOL HÍVÁS -> Végeztünk ezzel a körrel, visszatérünk a külső loopba
+        // HA NINCS TOOL HÍVaS -> Vegeztünk ezzel a korrel, visszaterünk a külső loopba
         if (toolBlocks.length === 0) {
           const textBlock = response.content.find((b) => b.type === 'text');
           if (textBlock) this.ui.logResponse(textBlock.text);
-          break; // Kilép a processLoop-ból, de a start() loopja folytatódik
+          if (textBlock) this.logger.info('AI valasz szoveggel', { length: textBlock.text.length });
+          break; // Kilep a processLoop-bol, de a start() loopja folytatodik
         }
 
-        // HA VAN TOOL HÍVÁS -> Végrehajtjuk őket
+        // HA VAN TOOL HÍVaS -> Vegrehajtjuk őket
         const toolResults = [];
 
         for (const block of toolBlocks) {
@@ -66,29 +72,41 @@ export class Agent {
 
           const serverName = this.mcp.getServerNameForTool(block.name);
           const allowed = await this.ui.requestApproval(serverName, block.name, block.input);
+          this.logger.info('Tool engedelykeres', {
+            server: serverName,
+            tool: block.name,
+            approved: allowed,
+          });
 
           let contentStr = '';
           let isError = false;
 
           if (allowed) {
             try {
-              this.ui.logSystem('Tool futtatása...');
-              const result = await this.mcp.executeTool(block.name, block.input);
+              this.ui.logSystem('Tool futtatasa...');
+              const start = Date.now();
+              const result: any = await this.mcp.executeTool(block.name, block.input);
 
-              // MCP eredmény konvertálása stringgé
-              contentStr = result.content
-                .map((c) => (c.type === 'text' ? c.text : JSON.stringify(c)))
+              // MCP eredmeny konvertalasa stringge
+              contentStr = (result as any).content
+                .map((c: any) => (c.type === 'text' ? c.text : JSON.stringify(c)))
                 .join('\n');
 
               this.ui.logSystem('Tool sikeresen lefutott.');
+              this.logger.info('Tool futas sikeres', {
+                tool: block.name,
+                durationMs: Date.now() - start,
+              });
             } catch (err: any) {
               contentStr = `Error executing tool: ${err.message}`;
               isError = true;
+              this.logger.error('Tool futas hiba', err);
             }
           } else {
             contentStr = 'User denied this action.';
             isError = true;
-            this.ui.logSystem('Tool futtatása elutasítva.');
+            this.ui.logSystem('Tool futtatasa elutasítva.');
+            this.logger.warn('Tool futtatas elutasítva', { tool: block.name });
           }
 
           toolResults.push({
@@ -99,13 +117,14 @@ export class Agent {
           });
         }
 
-        // Az eredményeket visszaküldjük a historyba, és a while(true) újraindul
-        // hogy az AI reagálhasson az eredményekre
+        // Az eredmenyeket visszaküldjük a historyba, es a while(true) újraindul
+        // hogy az AI reagalhasson az eredmenyekre
         this.history.push({ role: 'user', content: toolResults });
+        this.logger.debug('Tool eredmenyek visszaküldve az AI-nak', { count: toolResults.length });
       } catch (error: any) {
-        console.error('AI Error:', error);
-        this.ui.logSystem('Hiba történt az AI kommunikációban. Próbáld újra.');
-        break; // Hiba esetén megszakítjuk a jelenlegi feldolgozást
+        this.logger.error('AI Error', error);
+        this.ui.logSystem('Hiba tortent az AI kommunikacioban. Probald újra.');
+        break; // Hiba eseten megszakítjuk a jelenlegi feldolgozast
       }
     }
   }

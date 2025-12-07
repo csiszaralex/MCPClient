@@ -1,41 +1,40 @@
-import { Agent } from "./Agent.js";
-import { AiService } from "./services/AiService.js";
-import { McpService } from "./services/McpService.js";
-import { UiService } from "./services/UiService.js";
-import { ConfigService } from "./services/configService.js";
-import { LoggerService } from "./services/loggerService.js";
+import { Agent } from './Agent.js';
+import { AiService } from './services/AiService.js';
+import { ConfigService } from './services/ConfigService.js';
+import { LoggerService } from './services/LoggerService.js';
+import { McpService } from './services/McpService.js';
+import { UiService } from './services/UiService.js';
 
 (async () => {
   let logger: LoggerService | undefined;
 
   try {
-    // 1. Config betöltése (validációval)
+    // 1. Config betoltese (validacioval)
     const configService = new ConfigService();
 
-    // 2. Logger inicializálása
+    // 2. Logger inicializalasa
     logger = new LoggerService(configService);
-    logger.info("Rendszer indítása...");
+    logger.info('Rendszer indítasa...');
 
-    // 3. Service-ek példányosítása (Dependency Injection)
-    // Most már mindenki megkapja a loggert és/vagy a configot
+    // 3. Service-ek peldanyosítasa (Dependency Injection)
+    // Most mar mindenki megkapja a loggert es/vagy a configot
     const uiService = new UiService();
     const mcpService = new McpService(logger); // McpService kap loggert
-    const aiService = new AiService(configService, logger); // AiService kap configot és loggert
+    const aiService = new AiService(configService, logger); // AiService kap configot es loggert
 
-    // 4. Csatlakozás
-    logger.info("Szerverek csatlakoztatása folyamatban...");
+    // 4. Csatlakozas
+    logger.info('Szerverek csatlakoztatasa folyamatban...');
     await mcpService.connectServers(configService.servers);
 
-    // 5. Agent indítása
+    // 5. Agent indítasa
     const agent = new Agent(mcpService, aiService, uiService, logger);
     await agent.start();
-
   } catch (error: any) {
-    // Ha még a logger sem jött létre, console.error kell
+    // Ha meg a logger sem jott letre, console.error kell
     if (logger) {
-      logger.error("Végzetes hiba történt", error);
+      logger.error('Vegzetes hiba tortent', error);
     } else {
-      console.error("[FATAL]", error.message);
+      console.error('[FATAL]', error.message);
     }
     process.exit(1);
   }
