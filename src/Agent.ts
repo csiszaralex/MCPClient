@@ -2,6 +2,7 @@ import { IAgentUi } from './interfaces/IAgentUi.js';
 import { AiService } from './services/AiService.js';
 import { LoggerService } from './services/LoggerService.js';
 import { McpService } from './services/McpService.js';
+import { TransactionService } from './services/TransactionService.js';
 
 export class Agent {
   private history: any[] = [];
@@ -10,7 +11,8 @@ export class Agent {
     private mcp: McpService,
     private ai: AiService,
     private ui: IAgentUi,
-    private logger: LoggerService
+    private logger: LoggerService,
+    private transactionService: TransactionService
   ) {}
 
   async start() {
@@ -28,6 +30,7 @@ export class Agent {
 
       // 3. User input hozzaadasa a historyhoz
       this.logger.info('Felhasznaloi bevitel', { textLength: userInput.length });
+      await this.transactionService.record('USER_INPUT', 'user', 'agent', { content: userInput });
       this.history.push({ role: 'user', content: userInput });
 
       // 4. A valaszgeneralas es tool hasznalat (Belső Loop) elindítasa
@@ -85,6 +88,7 @@ export class Agent {
             try {
               this.ui.logSystem('Tool futtatasa...');
               const start = Date.now();
+              await this.transactionService.record('TOOL_EXECUTION', 'agent', serverName, { tool: block.name, input: block.input });
               const result: any = await this.mcp.executeTool(block.name, block.input);
 
               // MCP eredmeny konvertalasa stringge
@@ -97,16 +101,20 @@ export class Agent {
                 tool: block.name,
                 durationMs: Date.now() - start,
               });
+              await this.transactionService.record('TOOL_RESULT', serverName, 'agent', { tool: block.name, result: contentStr, durationMs: Date.now() - start });
+
             } catch (err: any) {
               contentStr = `Error executing tool: ${err.message}`;
               isError = true;
               this.logger.error('Tool futas hiba', err);
+              await this.transactionService.record('TOOL_RESULT', serverName, 'agent', { tool: block.name, error: err.message, isError: true });
             }
           } else {
             contentStr = 'User denied this action.';
             isError = true;
             this.ui.logSystem('Tool futtatasa elutasítva.');
             this.logger.warn('Tool futtatas elutasítva', { tool: block.name });
+            await this.transactionService.record('TOOL_RESULT', serverName, 'agent', { tool: block.name, error: 'User denied', isError: true });
           }
 
           toolResults.push({

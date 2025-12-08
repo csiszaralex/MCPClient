@@ -1,15 +1,18 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { ConfigService } from './ConfigService.js';
 import { LoggerService } from './LoggerService.js';
+import { TransactionService } from './TransactionService.js';
 
 export class AiService {
   private anthropic: Anthropic;
   private model: string;
   private logger: LoggerService;
+  private transactionService: TransactionService;
 
   // A konstruktor most mar a ConfigService-t varja string helyett
-  constructor(config: ConfigService, logger: LoggerService) {
+  constructor(config: ConfigService, logger: LoggerService, transactionService: TransactionService) {
     this.logger = logger;
+    this.transactionService = transactionService;
 
     // Itt vesszük ki a configbol a kulcsot
     this.anthropic = new Anthropic({
@@ -27,6 +30,7 @@ export class AiService {
       messageCount: messages?.length ?? 0,
       toolCount: tools?.length ?? 0,
     });
+    await this.transactionService.record('AI_REQUEST', 'agent', 'ai', { messagesCount: messages.length, model: this.model });
 
     try {
       const response = await this.anthropic.messages.create({
@@ -46,6 +50,11 @@ export class AiService {
         contentTypes,
         stopReason: (response as any).stop_reason,
         id: (response as any).id,
+      });
+      await this.transactionService.record('AI_RESPONSE', 'ai', 'agent', {
+        durationMs,
+        stopReason: (response as any).stop_reason,
+        contentTypes
       });
 
       return response;

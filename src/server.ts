@@ -10,6 +10,7 @@ import { ConfigService } from './services/ConfigService.js';
 import { LoggerService } from './services/LoggerService.js';
 import { McpService } from './services/McpService.js';
 import { SingleUserUiService } from './services/SingleUserUiService.js';
+import { TransactionService } from './services/TransactionService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,13 +18,14 @@ const __dirname = path.dirname(__filename);
 // --- 1. Rendszer Inicializalas (CSAK EGYSZER) ---
 const configService = new ConfigService();
 const logger = new LoggerService(configService);
+const transactionService = new TransactionService();
 const mcpService = new McpService(logger);
-const aiService = new AiService(configService, logger);
+const aiService = new AiService(configService, logger, transactionService);
 
 // Ez a trükk: A UI Service globalis, es varja a kapcsolatot
 const uiService = new SingleUserUiService();
 
-const agent = new Agent(mcpService, aiService, uiService, logger);
+const agent = new Agent(mcpService, aiService, uiService, logger, transactionService);
 
 // --- 2. Szerver es Socket ---
 const app = express();
