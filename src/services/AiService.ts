@@ -1,4 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
+import * as fs from 'fs';
+import * as path from 'path';
 import { ConfigService } from './ConfigService.js';
 import { LoggerService } from './LoggerService.js';
 import { TransactionService } from './TransactionService.js';
@@ -33,9 +35,12 @@ export class AiService {
     await this.transactionService.record('AI_REQUEST', 'agent', 'ai', { messagesCount: messages.length, model: this.model });
 
     try {
+      const systemPrompt = fs.readFileSync(path.join(process.cwd(), 'src', 'system.txt'), 'utf-8');
+
       const response = await this.anthropic.messages.create({
         model: this.model,
         max_tokens: 1024,
+        system: systemPrompt,
         messages: messages,
         tools: tools,
       });
