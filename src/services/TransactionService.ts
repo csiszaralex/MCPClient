@@ -71,9 +71,37 @@ export class TransactionService {
   }
 
   public async getChain(): Promise<ITransaction[]> {
-    // Reading from blockchain would involve querying events.
-    // For now, we return empty or implement event querying if needed.
-    // The user didn't explicitly ask for full history playback from chain in the app UI, just logging.
-    return [];
+    if (!this.contract) return [];
+
+    try {
+        // Query param "fromBlock: 0" to read from genesis to latest
+        const filter = this.contract.filters.TransactionLogged();
+        const events = await this.contract.queryFilter(filter, 0);
+
+        return events.map((event: any) => {
+            const { args, transactionHash } = event;
+            return {
+                id: args.id,
+                type: args.txType, // Mapped back from Solidity argument name
+                sender: args.sender,
+                receiver: args.receiver,
+                // Attempt to parse payload back to object
+                payload: this.safeJSONParse(args.payload),
+                timestamp: Number(args.timestamp) * 1000, // Convert seconds to ms
+                hash: transactionHash
+            } as ITransaction;
+        });
+    } catch (error) {
+        console.error("Failed to fetch chain from blockchain", error);
+        return [];
+    }
+  }
+
+  private safeJSONParse(str: string): any {
+    try {
+        return JSON.parse(str);
+    } catch {
+        return str;
+    }
   }
 }

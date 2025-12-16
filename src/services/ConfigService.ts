@@ -24,9 +24,15 @@ export class ConfigService {
       // { name: 'TODO', command: 'node', args: ['./path/to/todo/dist/index.js'] },
       // { name: 'USER', command: 'node', args: ['./path/to/user/dist/index.js'] },
       {
+
         name: 'WEATHER',
         command: 'node',
         args: ['D:\\02_Suli\\Onlab2\\MCP_weather\\build\\index.js'],
+      },
+      {
+        name: 'FLIGHTS',
+        command: 'node',
+        args: ['D:\\02_Suli\\Onlab2\\MCP_SanFrancisco\\dist\\index.js'],
       },
     ];
   }
